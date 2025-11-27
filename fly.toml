@@ -9,10 +9,13 @@ kill_timeout = 5
 [processes]
   bot = "python bot.py"
 
-# Required even if you don't expose an HTTP service
 [[services]]
+  processes = ["bot"]   # <-- Asignamos qué proceso usa este servicio
   internal_port = 8080
   protocol = "tcp"
+
+  [[services.ports]]
+    port = 8080         # <-- Puerto dummy requerido por Fly
 
   [services.concurrency]
     type = "connections"
