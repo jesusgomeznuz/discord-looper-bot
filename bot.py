@@ -5,7 +5,7 @@ from config.settings import DISCORD_TOKEN
 
 # Load opus
 if not discord.opus.is_loaded():
-    discord.opus.load_opus("/opt/homebrew/lib/libopus.0.dylib")
+    discord.opus.load_opus('libopus.so.0')  # Linux
 
 intents = discord.Intents.default()
 intents.message_content = True
