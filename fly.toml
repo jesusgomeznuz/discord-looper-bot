@@ -1,0 +1,14 @@
+app = "discord-looper-bot"
+
+[deploy]
+release_command = "echo Deploy complete"
+
+[env]
+PYTHONUNBUFFERED = "1"
+
+[[services]]
+internal_port = 8080
+protocol = "tcp"
+
+  [[services.ports]]
+  port = 8080

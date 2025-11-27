@@ -1,26 +1,18 @@
-# Imagen base ligera con Python 3.11
+# Imagen base con Python y FFmpeg
 FROM python:3.11-slim
 
-# Instalar dependencias del sistema necesarias para discord.py + opus + ffmpeg
-RUN apt-get update && apt-get install -y \
-    ffmpeg \
-    libopus0 \
-    && rm -rf /var/lib/apt/lists/*
+# Instalar FFmpeg
+RUN apt-get update && apt-get install -y ffmpeg && apt-get clean
 
-# Crear directorio de trabajo
+# Crear carpeta de la app
 WORKDIR /app
 
-# Copiar requirements
+# Copiar archivos
 COPY requirements.txt .
-
-# Instalar dependencias
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar todo el proyecto
+# Copiar el resto del proyecto
 COPY . .
 
-# Exponer algún puerto (Fly requiere uno, aunque no lo uses)
-EXPOSE 8080
-
-# Comando de ejecución
+# Comando de arranque
 CMD ["python", "bot.py"]
