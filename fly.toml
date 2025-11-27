@@ -1,11 +1,12 @@
-app = "discord-looper-bot"
-
-[build]
-
-[env]
-PYTHONUNBUFFERED = "1"
+[deploy]
+release_command = "echo Deploy complete"
 
 [processes]
-worker = "python bot.py"
+bot = "python bot.py"
 
-# Avoid HTTP service checks entirely
+[checks]
+  [checks.process]
+  grace_period = "5s"
+  interval = "30s"
+  method = "process"
+  timeout = "5s"
