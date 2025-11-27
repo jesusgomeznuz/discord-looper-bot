@@ -1,14 +1,11 @@
 app = "discord-looper-bot"
 
-[deploy]
-release_command = "echo Deploy complete"
+[build]
 
 [env]
 PYTHONUNBUFFERED = "1"
 
-[[services]]
-internal_port = 8080
-protocol = "tcp"
+[processes]
+worker = "python bot.py"
 
-  [[services.ports]]
-  port = 8080
+# Avoid HTTP service checks entirely
