@@ -1,5 +1,20 @@
+app = "discord-looper-bot"
+
+kill_signal = "SIGINT"
+kill_timeout = 5
+
 [deploy]
-release_command = "echo Deploy complete"
+  release_command = "echo Deploy complete"
 
 [processes]
-bot = "python bot.py"
+  bot = "python bot.py"
+
+# Required even if you don't expose an HTTP service
+[[services]]
+  internal_port = 8080
+  protocol = "tcp"
+
+  [services.concurrency]
+    type = "connections"
+    soft_limit = 25
+    hard_limit = 50
