@@ -3,10 +3,3 @@ release_command = "echo Deploy complete"
 
 [processes]
 bot = "python bot.py"
-
-[checks]
-  [checks.process]
-  grace_period = "5s"
-  interval = "30s"
-  method = "process"
-  timeout = "5s"

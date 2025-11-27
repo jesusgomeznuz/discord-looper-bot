@@ -5,17 +5,17 @@ from audio.player import play_gapless
 
 async def setup(bot):
     @bot.command()
-    async def loop(ctx, nombre_loop: str):
-        archivo = buscar_archivo(nombre_loop)
+    async def loop(ctx, loop_name: str):
+        file_path = buscar_archivo(loop_name)
 
-        if archivo is None:
-            await ctx.send(f"❌ No encontré `{nombre_loop}`.")
+        if file_path is None:
+            await ctx.send(f"Could not find '{loop_name}'.")
             return
 
         try:
             channel = ctx.author.voice.channel
         except:
-            await ctx.send("❌ Debes estar en un canal de voz.")
+            await ctx.send("You must be in a voice channel.")
             return
 
         vc = discord.utils.get(bot.voice_clients, guild=ctx.guild)
@@ -25,6 +25,6 @@ async def setup(bot):
         else:
             vc = await channel.connect()
 
-        play_gapless(vc, archivo)
+        play_gapless(vc, file_path)
 
-        await ctx.send(f"🔁 Loop (gapless): **{nombre_loop}**")
+        await ctx.send(f"Looping (gapless): {loop_name}")
