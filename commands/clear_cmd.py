@@ -29,5 +29,4 @@ async def setup(bot):
             if len(deleted) < PURGE_BATCH_SIZE:
                 break
 
-        confirmation = await ctx.send(f"Cleared {deleted_total} messages.")
-        await confirmation.delete(delay=5)
+        # Nada más que hacer, el canal queda vacío.
