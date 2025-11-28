@@ -1,12 +1,12 @@
 from discord.ext import commands
 import discord
-from config.settings import buscar_archivo
 from audio.player import play_gapless
+from storage.discord_loops import ensure_loop_file
 
 async def setup(bot):
     @bot.command()
     async def loop(ctx, loop_name: str):
-        file_path = buscar_archivo(loop_name)
+        file_path = await ensure_loop_file(loop_name, ctx.guild)
 
         if file_path is None:
             await ctx.send(f"Could not find '{loop_name}'.")
