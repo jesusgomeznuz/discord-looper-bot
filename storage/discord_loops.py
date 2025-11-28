@@ -1,7 +1,7 @@
 import re
 import shutil
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Iterable, List, Optional, Tuple
 
 import discord
 
@@ -10,6 +10,7 @@ from config.settings import LOOPS_CACHE_DIR, LOOP_EXTENSIONS, buscar_archivo
 # Número de mensajes por canal que se inspeccionarán al buscar attachments
 HISTORY_LIMIT = 200
 BASE_SUFFIX = "_base"
+BASE_INDEX_PATTERN = re.compile(rf"^(?P<name>.+){BASE_SUFFIX}_(?P<index>\d+)$")
 
 
 def prepare_cache_dir(clean: bool = True) -> None:
@@ -81,7 +82,84 @@ async def _download_attachment(loop_name: str, attachment: discord.Attachment, g
     return str(cache_path)
 
 
-async def ensure_loop_file(raw_loop_name: str, guild: discord.Guild) -> Optional[str]:
+async def _find_all_base_variants(base_name: str, guild: discord.Guild) -> List[discord.Attachment]:
+    """
+    Devuelve todos los attachments disponibles para la base (base, base_1, base_2...) en #base.
+    """
+    matches = []
+    for channel in _base_channels(guild):
+        async for message in channel.history(limit=HISTORY_LIMIT, oldest_first=False):
+            for attachment in message.attachments:
+                if attachment.filename.endswith(tuple(f".{ext}" for ext in LOOP_EXTENSIONS)):
+                    stem = Path(attachment.filename).stem.lower()
+                    if stem == base_name.lower() or stem.startswith(f"{base_name.lower()}_"):
+                        matches.append(attachment)
+    return matches
+
+
+class BaseSelectionError(Exception):
+    def __init__(self, message: str):
+        super().__init__(message)
+        self.message = message
+
+
+async def _resolve_base_attachment(
+    normalized_name: str, guild: discord.Guild
+) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Maneja la lógica de bases simples y múltiples. Devuelve (ruta, mensaje_error_opcional).
+    """
+    match = BASE_INDEX_PATTERN.match(normalized_name)
+    if match:
+        base_name = match.group("name")
+        base_index = match.group("index")
+        normalized_variant = f"{base_name}{BASE_SUFFIX}_{base_index}"
+
+        local_variant = buscar_archivo(normalized_variant)
+        if local_variant:
+            return local_variant, None
+
+        attachment = await _find_attachment(normalized_variant, _base_channels(guild))
+        if attachment:
+            return await _download_attachment(normalized_variant, attachment, guild.id), None
+
+        return None, (
+            f"No encontré '{base_name} base {base_index}'. "
+            f"Asegúrate de que el archivo exista como {base_name}_{base_index}.ext"
+        )
+
+    base_name = normalized_name[: -len(BASE_SUFFIX)]
+    if not base_name:
+        return None, "Especifica qué base necesitas."
+
+    # Single base local
+    local_base = buscar_archivo(base_name)
+    if local_base:
+        return local_base, None
+
+    # Check attachments
+    attachments = await _find_all_base_variants(base_name, guild)
+
+    if not attachments:
+        attachment = await _find_attachment(base_name, _base_channels(guild))
+        if attachment:
+            return await _download_attachment(base_name, attachment, guild.id), None
+        return None, f"No encontré archivos base para '{base_name}'."
+
+    # Determine if there are multiple variants with numeric suffixes
+    variants = [att for att in attachments if att.filename.lower().startswith(f"{base_name.lower()}_")]
+    if variants and len(variants) > 1:
+        return None, f"Hay varias bases para '{base_name}'. Intenta con '{base_name} base 1'."
+
+    # Only base without suffix
+    attachment = await _find_attachment(base_name, _base_channels(guild))
+    if attachment:
+        return await _download_attachment(base_name, attachment, guild.id), None
+
+    return None, f"No encontré archivos base para '{base_name}'."
+
+
+async def ensure_loop_file(raw_loop_name: str, guild: discord.Guild) -> Tuple[Optional[str], Optional[str]]:
     """
     Busca el loop solicitado: primero local, luego #loops y, si termina en "_base",
     intenta con el archivo raíz alojado en #base.
@@ -89,30 +167,20 @@ async def ensure_loop_file(raw_loop_name: str, guild: discord.Guild) -> Optional
     normalized_name = normalize_loop_name(raw_loop_name)
 
     if not normalized_name:
-        return None
+        return None, "No se proporcionó un nombre válido."
 
     local = buscar_archivo(normalized_name)
     if local:
-        return local
+        return local, None
 
     if guild is None:
-        return None
+        return None, "Este comando sólo funciona dentro de un servidor."
 
     attachment = await _find_attachment(normalized_name, _loop_channels(guild))
     if attachment:
-        return await _download_attachment(normalized_name, attachment, guild.id)
+        return await _download_attachment(normalized_name, attachment, guild.id), None
 
-    if normalized_name.endswith(BASE_SUFFIX):
-        base_name = normalized_name[: -len(BASE_SUFFIX)]
-        if not base_name:
-            return None
+    if normalized_name.endswith(BASE_SUFFIX) or BASE_INDEX_PATTERN.match(normalized_name):
+        return await _resolve_base_attachment(normalized_name, guild)
 
-        local_base = buscar_archivo(base_name)
-        if local_base:
-            return local_base
-
-        attachment = await _find_attachment(base_name, _base_channels(guild))
-        if attachment:
-            return await _download_attachment(base_name, attachment, guild.id)
-
-    return None
+    return None, f"No pude encontrar '{raw_loop_name}'."

@@ -12,7 +12,11 @@ VOICE_CONNECT_TIMEOUT = 15
 async def setup(bot):
     @bot.command()
     async def start(ctx, *, loop_name: str):
-        file_path = await ensure_loop_file(loop_name, ctx.guild)
+        file_path, error = await ensure_loop_file(loop_name, ctx.guild)
+
+        if error:
+            await ctx.send(f"{error}❌" if not error.endswith(("❌", "⚠️")) else error)
+            return
 
         if file_path is None:
             await ctx.send(f"No pude encontrar '{loop_name}'❌")
