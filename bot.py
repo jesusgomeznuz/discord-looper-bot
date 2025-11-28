@@ -19,6 +19,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 EXTENSIONS = [
     "commands.loop_cmd",
     "commands.stop_cmd",
+    "commands.start_cmd",
     "commands.clear_cmd",
 ]
 

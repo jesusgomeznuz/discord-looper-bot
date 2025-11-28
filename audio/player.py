@@ -1,4 +1,7 @@
+import asyncio
+
 import discord
+
 
 def play_gapless(vc, path):
     """
@@ -11,3 +14,16 @@ def play_gapless(vc, path):
 
     source = discord.FFmpegPCMAudio(path, **ffmpeg_options)
     vc.play(source)
+
+
+def play_once(bot, vc, path, disconnect_after=True):
+    """
+    Reproduce un archivo una sola vez y opcionalmente desconecta al bot al terminar.
+    """
+    source = discord.FFmpegPCMAudio(path)
+
+    def _after(error):
+        if disconnect_after:
+            asyncio.run_coroutine_threadsafe(vc.disconnect(), bot.loop)
+
+    vc.play(source, after=_after)
