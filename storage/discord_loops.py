@@ -1,7 +1,7 @@
 import re
 import shutil
 from pathlib import Path
-from typing import Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, Optional, Tuple
 
 import discord
 
@@ -82,25 +82,20 @@ async def _download_attachment(loop_name: str, attachment: discord.Attachment, g
     return str(cache_path)
 
 
-async def _find_all_base_variants(base_name: str, guild: discord.Guild) -> List[discord.Attachment]:
+async def _find_all_base_variants(base_name: str, guild: discord.Guild) -> Dict[str, discord.Attachment]:
     """
-    Devuelve todos los attachments disponibles para la base (base, base_1, base_2...) en #base.
+    Devuelve los attachments más recientes por nombre (base, base_1, base_2...) en #base.
     """
-    matches = []
+    matches: Dict[str, discord.Attachment] = {}
+    valid_suffixes = tuple(f".{ext}" for ext in LOOP_EXTENSIONS)
     for channel in _base_channels(guild):
         async for message in channel.history(limit=HISTORY_LIMIT, oldest_first=False):
             for attachment in message.attachments:
-                if attachment.filename.endswith(tuple(f".{ext}" for ext in LOOP_EXTENSIONS)):
+                if attachment.filename.endswith(valid_suffixes):
                     stem = Path(attachment.filename).stem.lower()
                     if stem == base_name.lower() or stem.startswith(f"{base_name.lower()}_"):
-                        matches.append(attachment)
+                        matches[stem] = attachment
     return matches
-
-
-class BaseSelectionError(Exception):
-    def __init__(self, message: str):
-        super().__init__(message)
-        self.message = message
 
 
 async def _resolve_base_attachment(
@@ -113,7 +108,7 @@ async def _resolve_base_attachment(
     if match:
         base_name = match.group("name")
         base_index = match.group("index")
-        normalized_variant = f"{base_name}{BASE_SUFFIX}_{base_index}"
+        normalized_variant = f"{base_name}_{base_index}"
 
         local_variant = buscar_archivo(normalized_variant)
         if local_variant:
@@ -139,20 +134,17 @@ async def _resolve_base_attachment(
 
     # Check attachments
     attachments = await _find_all_base_variants(base_name, guild)
-
     if not attachments:
-        attachment = await _find_attachment(base_name, _base_channels(guild))
-        if attachment:
-            return await _download_attachment(base_name, attachment, guild.id), None
         return None, f"No encontré archivos base para '{base_name}'."
 
-    # Determine if there are multiple variants with numeric suffixes
-    variants = [att for att in attachments if att.filename.lower().startswith(f"{base_name.lower()}_")]
-    if variants and len(variants) > 1:
+    stems = list(attachments.keys())
+    base_lower = base_name.lower()
+    numbered = [stem for stem in stems if re.match(rf"^{base_lower}_\d+$", stem)]
+
+    if len(stems) > 1 or numbered:
         return None, f"Hay varias bases para '{base_name}'. Intenta con '{base_name} base 1'."
 
-    # Only base without suffix
-    attachment = await _find_attachment(base_name, _base_channels(guild))
+    attachment = attachments.get(base_lower)
     if attachment:
         return await _download_attachment(base_name, attachment, guild.id), None
 
