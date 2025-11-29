@@ -12,7 +12,7 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 LOOPS_FOLDER = Path(os.getenv("LOOPS_FOLDER", "loops"))
 
 # Extensiones soportadas al buscar loops
-LOOP_EXTENSIONS = ("ogg", "wav", "mp3")
+LOOP_EXTENSIONS = ("ogg", "wav", "mp3", "flac")
 
 # Carpeta usada para cachear loops descargados desde Discord
 LOOPS_CACHE_DIR = Path(os.getenv("LOOPS_CACHE_DIR", "/tmp/looper-cache"))
